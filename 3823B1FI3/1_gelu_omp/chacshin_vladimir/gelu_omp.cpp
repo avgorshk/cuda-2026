@@ -1,7 +1,14 @@
-#include "gelu_omp.h"
 #include <cmath>
 #include <omp.h>
+#include <vector>
+#include <iostream>
+#include <chrono>
+#include <random>
 
+#pragma GCC optimize("O3")
+#pragma GCC optimize("fast-math")
+
+#pragma GCC target("avx2")
 std::vector<float> GeluOMP(const std::vector<float>& input) {
     size_t n = input.size();
     std::vector<float> output(n);
@@ -62,3 +69,42 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
     return output;
 
 }
+
+
+int main()
+{
+    // Размер вектора
+    const size_t N = 134217728;
+    // Генератор случайных чисел
+    std::mt19937 rng(42); // фиксированное зерно для воспроизводимости
+    std::uniform_real_distribution<float> dist(-3.0f, 3.0f);
+    omp_set_num_threads(12);
+    // Создаём и заполняем входной вектор
+    std::vector<float> input(N);
+    for (size_t i = 0; i < N; ++i) {
+        input[i] = dist(rng);
+    }
+    std::vector<float> output;
+    // Засекаем время
+
+    long long sum_ms = 0;
+    // Вычисляем GELU
+    for (int i = 0; i < 40; i++) {
+        auto start = std::chrono::high_resolution_clock::now();
+        output = GeluOMP(input);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        sum_ms += duration_ms;
+    }
+
+    std::cout << "GELU computed for " << N << " elements in " << sum_ms / 40.0f << " ms.\n";
+
+    // Опционально: проверим первые несколько значений
+    for (int i = 0; i < 5; ++i) {
+        std::cout << "input[" << i << "] = " << input[i]
+            << ", output[" << i << "] = " << output[i] << "\n";
+    }
+
+    return 0;
+}
+
