@@ -462,6 +462,7 @@ std::vector<float> GeluOCL(const std::vector<float>& input, int platform) {
 |Group|Name|Result|Rank|
 |-----|----|------|----|
 |**FAST**|**FAST**|**0.0254**|**-**|
+|3823B1FI3|romanov_artem|0.0325|1|
 |**REF**|**REF**|**0.7279**|**-**|
 
 ## 4_naive_gemm_cuda (4096 elements)
@@ -506,7 +507,7 @@ std::vector<float> GeluOCL(const std::vector<float>& input, int platform) {
 |Group|Name|Passed|Score|
 |-----|----|------|-----|
 |3823B1FI3|chacshin_vladimir|0/9|0|
-|3823B1FI3|romanov_artem|1/9|64|
+|3823B1FI3|romanov_artem|2/9|128|
 |3823B1FI3|votincev_dmitri|1/9|64|
 
 Passed: 0
@@ -514,5 +515,4 @@ Passed: 0
 **Total Passed: 0**
 
 ---
-*Maximum Score: 576 (64 per task)
-*
+*Maximum Score: 576 (64 per task)*
