@@ -466,6 +466,7 @@ std::vector<float> GeluOCL(const std::vector<float>& input, int platform) {
 |-----|----|------|----|
 |**FAST**|**FAST**|**0.0254**|**-**|
 |3823B1FI3|romanov_artem|0.0325|1|
+|3823B1FI3|votincev_dmitri|0.1509|2|
 |**REF**|**REF**|**0.7279**|**-**|
 
 ## 4_naive_gemm_cuda (4096 elements)
@@ -513,7 +514,7 @@ std::vector<float> GeluOCL(const std::vector<float>& input, int platform) {
 |3823B1FI3|chacshin_vladimir|0/9|0|
 |3823B1FI3|lukin_ivan|1/9|61|
 |3823B1FI3|romanov_artem|3/9|189|
-|3823B1FI3|votincev_dmitri|1/9|61|
+|3823B1FI3|votincev_dmitri|2/9|123|
 
 Passed: 0
 
