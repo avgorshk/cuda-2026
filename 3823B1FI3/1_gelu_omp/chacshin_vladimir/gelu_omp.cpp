@@ -8,7 +8,7 @@
 #include "gelu_omp.h"
 
 
-inline __m256 exp256_ps_high_prec(__m256 x) {
+/*inline __m256 exp256_ps_high_prec(__m256 x) {
     const __m256 ln2 = _mm256_set1_ps(0.6931471805599453f);
     const __m256 inv_ln2 = _mm256_set1_ps(1.4426950408889634f);
     const __m256 c1 = _mm256_set1_ps(1.0f / 2.0f);
@@ -97,6 +97,30 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
             float tanh_u = 1.0f - 2.0f / (expf(2.0f * u) + 1.0f);
             output[j] = 0.5f * x * (1.0f + tanh_u);
         }
+    }
+
+    return output;
+}*/
+
+#include "gelu_omp.h"
+#include <vector>
+#include <cmath>
+std::vector<float> GeluOMP(const std::vector<float>& input) {
+    const int N = input.size();
+    std::vector<float> output(N);
+
+    const float _2SQRT2PI = 2.0f * sqrtf(2.0f / M_PI);
+    const float C1 = 0.044715f;
+
+#pragma omp parallel for
+    for (int i = 0; i < N; i++) {
+        float x = input[i];
+
+        float x3 = x * x * x;
+        float arg = _2SQRT2PI * (x + C1 * x3);
+        float ex = expf(-arg);
+
+        output[i] = x / (1.0f + ex);
     }
 
     return output;
