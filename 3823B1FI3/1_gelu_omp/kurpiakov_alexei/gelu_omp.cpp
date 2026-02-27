@@ -23,7 +23,7 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
 #pragma omp parallel for simd schedule(static)
     for (int i = 0; i < _size; ++i) {
         x = input_ptr[i];
-        _exp = std::expf(-(x * C1 * (1.0f + C2 * x * x)));
+        _exp = std::exp2f(-(x * C1 * (1.0f + C2 * x * x)));
         tmp = x / (_exp + 1.0f);
         result_ptr[i] = tmp;
     }
