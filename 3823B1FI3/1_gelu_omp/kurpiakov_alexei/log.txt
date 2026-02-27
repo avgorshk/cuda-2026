@@ -1,0 +1,5 @@
+/home/crazyproger/sandbox/cuda-2026/3823B1FI3/1_gelu_omp/kurpiakov_alexei/gelu_omp.cpp: In function ‘std::vector<float> GeluOMP(const std::vector<float>&)’:
+/home/crazyproger/sandbox/cuda-2026/3823B1FI3/1_gelu_omp/kurpiakov_alexei/gelu_omp.cpp:26:21: error: ‘expf’ is not a member of ‘std’; did you mean ‘exp2f’?
+   26 |         _exp = std::expf(-(x * C1 * (1.0f + C2 * x * x)));
+      |                     ^~~~
+      |                     exp2f
