@@ -8,7 +8,7 @@
 #include "gelu_omp.h"
 
 
-/*inline __m256 exp256_ps_high_prec(__m256 x) {
+inline __m256 exp256_ps_small(__m256 x) {
     const __m256 ln2 = _mm256_set1_ps(0.6931471805599453f);
     const __m256 inv_ln2 = _mm256_set1_ps(1.4426950408889634f);
     const __m256 c1 = _mm256_set1_ps(1.0f / 2.0f);
@@ -63,6 +63,9 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
 
     const float alpha = 0.79788456f;
     const float beta = 0.044715f;
+    const __m256 thresh_high = _mm256_set1_ps(10.0f);
+    const __m256 thresh_low = _mm256_set1_ps(-9.0f);
+    const __m256 zero_vec = _mm256_setzero_ps();
 
 #pragma omp parallel for schedule(guided)
     for (size_t b = 0; b < n; b += block_size) {
@@ -71,6 +74,10 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
 
         for (i = b; i < end - 7; i += 8) {
             __m256 x = _mm256_loadu_ps(input.data() + i);
+
+            __m256 mask_high = _mm256_cmp_ps(x, thresh_high, _CMP_GT_OS);   // x > 10
+            __m256 mask_low = _mm256_cmp_ps(x, thresh_low, _CMP_LT_OS);    // x < -9
+
             __m256 x2 = _mm256_mul_ps(x, x);
             __m256 x3 = _mm256_mul_ps(x2, x);
 
@@ -78,7 +85,9 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
             u = _mm256_mul_ps(u, _mm256_set1_ps(alpha));
 
             __m256 two_u = _mm256_add_ps(u, u);
-            __m256 exp2u = exp256_ps_high_prec(two_u);
+
+            __m256 exp2u = exp256_ps_small(two_u);
+
 
             __m256 tanh_u = _mm256_sub_ps(_mm256_set1_ps(1.0f),
                 _mm256_div_ps(_mm256_set1_ps(2.0f),
@@ -86,6 +95,9 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
 
             __m256 res = _mm256_mul_ps(_mm256_set1_ps(0.5f),
                 _mm256_mul_ps(x, _mm256_add_ps(_mm256_set1_ps(1.0f), tanh_u)));
+
+            res = _mm256_blendv_ps(res, x, mask_high); // если x>10 ставим x
+            res = _mm256_blendv_ps(res, zero_vec, mask_low); // если x<-9 ставим 0
 
             _mm256_storeu_ps(output.data() + i, res);
         }
@@ -100,28 +112,82 @@ std::vector<float> GeluOMP(const std::vector<float>& input) {
     }
 
     return output;
-}*/
+}
 
-#include "gelu_omp.h"
-#include <vector>
-#include <cmath>
-std::vector<float> GeluOMP(const std::vector<float>& input) {
-    const int N = input.size();
-    std::vector<float> output(N);
+/*double test_performance(const std::vector<float>& input, size_t repeats = 4, int block_size = 16800) {
+    // Warming-up
+    GeluOMP(input);
+    // Performance Measuring
+    std::vector<double> min_times;
+    for (int j = 0; j < repeats; j++) {
+        std::vector<double> time_list;
+        for (size_t i = 0; i < 4; ++i) {
+            auto start = std::chrono::high_resolution_clock::now();
+            GeluOMP(input);
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> duration = end - start;
+            time_list.push_back(duration.count());
+        }
+        double min_time = *std::min_element(time_list.begin(), time_list.end());
+        min_times.push_back(min_time);
+    }
+    double avg = std::accumulate(min_times.begin(), min_times.end(), 0.0) / min_times.size();
+    std::cout << "Min execution time for block size " << block_size << " over " << repeats << " runs: "
+        << *std::min_element(min_times.begin(), min_times.end()) << " seconds\n"<<"aver :"<<avg<<" seconds\n";
+    return avg;
+}
 
-    const float _2SQRT2PI = 2.0f * sqrtf(2.0f / M_PI);
-    const float C1 = 0.044715f;
-
-#pragma omp parallel for
-    for (int i = 0; i < N; i++) {
-        float x = input[i];
-
-        float x3 = x * x * x;
-        float arg = _2SQRT2PI * (x + C1 * x3);
-        float ex = expf(-arg);
-
-        output[i] = x / (1.0f + ex);
+int main() {
+    FILE* fgold = fopen("golden_100_100.bin", "rb");
+    if (!fgold) {
+        std::cerr << "Cannot open golden file\n";
+        return 1;
     }
 
-    return output;
-}
+    std::vector<float> input;
+    std::vector<float> golden;
+
+    // читаем из stdin и golden одновременно
+    float x, y;
+    while (fread(&x, sizeof(float), 1, stdin) == 1 &&
+        fread(&y, sizeof(float), 1, fgold) == 1) {
+        input.push_back(x);
+        golden.push_back(y);
+    }
+
+    fclose(fgold);
+
+    std::vector<float> outp;
+    outp = GeluOMP(input);
+    for (int i=0;i< input.size();i++){
+        if (std::abs(outp[i] - golden[i]) > 1e-7) {
+            std::cout<<i
+                << "inp:" << input[i]
+                << " outp:" << outp[i]
+                << " exp:" << golden[i]
+                << " diff:" << (outp[i] - golden[i])
+                << "False"
+                << "\n";
+        }
+        else {
+            std::cout << i
+                << "inp:" << input[i]
+                << " outp:" << outp[i]
+                << " exp:" << golden[i]
+                << " diff:" << (outp[i] - golden[i])
+                << "\n";
+        }
+    }
+    omp_set_num_threads(4);
+    using clock = std::chrono::high_resolution_clock;
+
+    std::vector<float> input2(134217728); // пример: 16M элементов
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<float> dist(-100,100);
+
+    for (auto& x : input2) x = dist(rng);
+
+    test_performance(input2, 20);
+
+    return 0;
+}*/
