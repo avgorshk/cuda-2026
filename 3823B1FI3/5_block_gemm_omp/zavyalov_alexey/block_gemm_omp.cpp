@@ -18,17 +18,11 @@ std::vector<float> BlockGemmOMP(const std::vector<float>& a,
                     int a_ind_mult_n = a_ind * n;
                     int k_mult_n = k * n;
                     int next_block_column = ((block_column + 1) * BLOCK_WIDTH);
+                    float a_elem = a[a_ind_mult_n + k];
 
-                    // #pragma omp simd
-                    for (int b_ind = block_column * BLOCK_WIDTH; b_ind < next_block_column; b_ind += 8) {
-                        c[a_ind_mult_n + b_ind] += a[a_ind_mult_n + k] * b[k_mult_n + b_ind];
-                        c[a_ind_mult_n + (b_ind + 1)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 1)];
-                        c[a_ind_mult_n + (b_ind + 2)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 2)];
-                        c[a_ind_mult_n + (b_ind + 3)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 3)];
-                        c[a_ind_mult_n + (b_ind + 4)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 4)];
-                        c[a_ind_mult_n + (b_ind + 5)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 5)];
-                        c[a_ind_mult_n + (b_ind + 6)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 6)];
-                        c[a_ind_mult_n + (b_ind + 7)] += a[a_ind_mult_n + k] * b[k_mult_n + (b_ind + 7)];
+                    #pragma omp simd
+                    for (int b_ind = block_column * BLOCK_WIDTH; b_ind < next_block_column; b_ind ++) {
+                        c[a_ind_mult_n + b_ind] += a_elem * b[k_mult_n + b_ind];
                     }
                 }
             }
